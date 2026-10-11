@@ -2,19 +2,28 @@
 
 SysmlModelParser reads SysML v2 models and turns them into Java objects. You decide with annotations which Java class is built for which SysML element. The parser finds these classes on its own by scanning the classpath at startup.
 
-Principle: only elements that have a class are mapped. Elements without a matching class are not skipped silently, they are reported by the rule `CheckUnMappedElements`.
+Principle: only elements that have a class are mapped. Elements without a matching class are left out of the result.
 
 # Installation
 
+The library is published through JitPack. No account or token is needed; add the repository and the dependency to your `pom.xml`:
+
 ```xml
+<repositories>
+    <repository>
+        <id>jitpack.io</id>
+        <url>https://jitpack.io</url>
+    </repository>
+</repositories>
+
 <dependency>
-    <groupId>org.example</groupId>
-    <artifactId>sysml-library-mapper</artifactId>
-    <version>GITHUB-release version</version>
+    <groupId>com.github.cloud-DTs</groupId>
+    <artifactId>Sysmlv2ModelParser</artifactId>
+    <version>RELEASE_TAG</version>
 </dependency>
 ```
 
-The package is hosted on GitHub Packages. Your `settings.xml` needs a server entry with the repository ID (for example `github`) and a token with `read:packages`.
+`RELEASE_TAG` is a release tag of this repository, for example `v1.0.1`. The SysML v2 Pilot Implementation comes in as a transitive dependency (`com.github.cloud-DTs:sysml-pilot-kernel`, also from JitPack). Java 21 is required.
 
 # Entry point
 
@@ -99,7 +108,7 @@ For each element the parser looks for a class in this order:
 
 1. **Library type.** The most specific library type the element specializes that has a class. If the constructor of that class does not accept the element, the parser moves on to the next parent library type.
 2. **Metaclass.** If no library type fits, the most specific mapped metaclass the element is an instance of is used.
-3. **Nothing.** The element stays unmapped and is reported by `CheckUnMappedElements`.
+3. **Nothing.** The element stays unmapped and does not appear in the result.
 
 ## Subclass wins
 
@@ -144,7 +153,6 @@ Predefined in `DefaultRuleExecutor`:
 
 * **MultiplicityRule:** a specialization must not violate the multiplicity of the inherited feature.
 * **MultiType:** all typings of an element must be compatible with each other (except `Flow`).
-* **CheckUnMappedElements:** reports input elements that have no mapping class.
 
 ## Custom rules
 
@@ -152,10 +160,10 @@ Extend `DefaultRuleExecutor` to keep the predefined rules, and pass the executor
 
 ```java
 public class MyExecutor extends DefaultRuleExecutor {
-    @Override
-    public List<SemanticRule> getSemanticRules(NewUtil newUtil) {
-        return List.of(new MyRule(newUtil));
-    }
+	@Override
+	public List<SemanticRule> getSemanticRules(NewUtil newUtil) {
+		return List.of(new MyRule(newUtil));
+	}
 }
 
 SysmlConverterMain main = new SysmlConverterMain("MyLibrary.zip", new MyExecutor());
@@ -169,10 +177,10 @@ To add to the predefined general rules, call `super.getGeneralRules(newUtil)` in
 
 ```java
 public class MyConverterMain extends SysmlConverterMain {
-    public MyConverterMain() throws IOException { super("MyLibrary.zip", new MyExecutor()); }
+	public MyConverterMain() throws IOException { super("MyLibrary.zip", new MyExecutor()); }
 
-    @Override
-    protected Mapper getMapper() { return new MyMapper(scanner, newUtil); }
+	@Override
+	protected Mapper getMapper() { return new MyMapper(scanner, newUtil); }
 }
 ```
 
