@@ -10,6 +10,7 @@ import org.omg.sysml.lang.sysml.Element;
 import org.omg.sysml.lang.sysml.Feature;
 import org.omg.sysml.lang.sysml.Package;
 import org.omg.sysml.lang.sysml.Type;
+import org.omg.sysml.util.FeatureUtil;
 
 
 import java.nio.charset.StandardCharsets;
@@ -166,17 +167,24 @@ public class Mapper {
 	public <T extends AbstractType<?,?>> T mapChain(List<Feature> chain, AbstractType<?,?> context, Class<T> type) {
 		Feature first = chain.getFirst();
 		AbstractType<?,?> scope = context;
-		while (scope != null && !scope.getSysmlElement().getFeature().contains(first)){
+		Optional<Feature> start = Optional.empty();
+		while (scope != null && (start = featureIn(scope, first)).isEmpty()){
 			scope = scope.getParent().orElse(null);
 		}
-		AbstractType<?,?> current = map(first, scope);
+		AbstractType<?,?> current = map(start.orElse(first), scope);
 		for (Feature link : chain.subList(1, chain.size())) {
 			if (current == null) break;
-			current = map(link, current);
+			current = map(featureIn(current, link).orElse(link), current);
 		}
 		if (!type.isInstance(current)) throw new IllegalStateException("Chain %s mapped as %s, expected %s"
 				.formatted(chain.stream().map(Feature::getName).toList(), current == null ? "nothing" : current.getClass().getSimpleName(), type.getSimpleName()));
 		return type.cast(current);
+	}
+
+	private Optional<Feature> featureIn(AbstractType<?,?> owner, Feature target) {
+		return owner.getSysmlElement().getFeature().stream()
+				.filter(feature -> feature == target || FeatureUtil.getAllRedefinedFeaturesOf(feature).contains(target))
+				.findFirst();
 	}
 
 
