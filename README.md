@@ -6,24 +6,40 @@ Principle: only elements that have a class are mapped. Elements without a matchi
 
 # Installation
 
-The library is published through JitPack. No account or token is needed; add the repository and the dependency to your `pom.xml`:
+Java 21 is required. The library is published to GitHub Packages; you need access to the `cloud-DTs` organization and a GitHub personal access token with the `read:packages` scope.
+
+Add the repository and the dependency to your `pom.xml`:
 
 ```xml
 <repositories>
     <repository>
-        <id>jitpack.io</id>
-        <url>https://jitpack.io</url>
+        <id>github</id>
+        <url>https://maven.pkg.github.com/cloud-DTs/Sysmlv2ModelParser</url>
     </repository>
 </repositories>
 
 <dependency>
-    <groupId>com.github.cloud-DTs</groupId>
-    <artifactId>Sysmlv2ModelParser</artifactId>
-    <version>RELEASE_TAG</version>
+    <groupId>org.example</groupId>
+    <artifactId>sysml-library-mapper</artifactId>
+    <version>VERSION</version>
 </dependency>
 ```
 
-`RELEASE_TAG` is a release tag of this repository, for example `v1.0.1`. The SysML v2 Pilot Implementation comes in as a transitive dependency (`com.github.cloud-DTs:sysml-pilot-kernel`, also from JitPack). Java 21 is required.
+Add your token to `~/.m2/settings.xml`:
+
+```xml
+<settings>
+    <servers>
+        <server>
+            <id>github</id>
+            <username>YOUR_GITHUB_USER</username>
+            <password>YOUR_TOKEN</password>
+        </server>
+    </servers>
+</settings>
+```
+
+`VERSION` is a published version, for example `1.0.0`.
 
 # Entry point
 
@@ -34,22 +50,9 @@ ResultConverter result = main.parse("path/to/model");
 List<MyPartUsage> parts = result.getByType(MyPartUsage.class);
 ```
 
-When created, `SysmlConverterMain`:
+`"MyLibrary.zip"` is your SysML library as a zip file on the classpath, for example in `src/main/resources`. It is loaded and validated once when `SysmlConverterMain` is created; errors in the library are thrown immediately.
 
-1. Starts SysML Interactive.
-2. Loads the SysML standard library (`sysml_library.zip`, shipped with the parser).
-3. Loads your library. The name passed to the constructor is a zip file on the classpath, for example in `src/main/resources` or packed by the build into `target/classes`.
-4. Validates the library and throws immediately on errors.
-5. Scans the classpath for annotated classes and runs all scan checks (see below).
-
-`parse(String... paths)` removes the input of the previous call, reads all `.sysml` files below the given paths, validates them, runs the rules and maps. One instance can be reused; library and scan are built only once.
-
-Steps inside `parse`:
-
-1. Read and validate the input
-2. General rules (`executeGeneralRules`)
-3. Mapping
-4. Semantic rules (`executeSemanticRules`) on the result
+`parse(String... paths)` reads all `.sysml` files below the given paths, validates them, runs the rules and maps them. One instance can be reused; every call replaces the input of the previous one.
 
 # Mapping classes
 
@@ -78,7 +81,7 @@ public class MyActionUsage extends ActionMapUsage<MyActionCore> { ... }
 ## Rules for mapping classes
 
 * Exactly one public constructor `(SysML type, Mapper)`. The SysML type decides which elements the class accepts.
-* `core` must be a concrete class and must fit the type parameter `C` of the class. The parser sets the core right after construction.
+* `core` must be a concrete class and must fit the type parameter `C` of the class.
 * The type parameter `D` of a usage (its definition) must have exactly one bound.
 * Annotations are not inherited. A class without an annotation is invisible to the parser.
 
@@ -99,8 +102,6 @@ public MyAttributeUsage getTarget() {
     return MyAttributeUsage.class.cast(super.getTarget());
 }
 ```
-
-The cast in the getter is safe because `mapTarget` only returns that type.
 
 # Resolution rules
 
@@ -126,7 +127,7 @@ Many SysML metaclasses inherit from each other. A mapping on a general metaclass
 * `Function` also catches `CalculationDefinition`, `ConstraintDefinition`, `RequirementDefinition` and case definitions.
 * `InvocationExpression` also catches `OperatorExpression`, `IndexExpression`, `SelectExpression`, `CollectExpression`.
 
-That is why every fallback to a supertype is logged (see Logging).
+Every fallback to a supertype is logged (see Logging).
 
 # Startup checks
 
@@ -140,9 +141,9 @@ The scan throws if:
 * the definition `D` of a library usage does not fit the definition class of its library type,
 * the definition `D` of a metaclass usage is not met by any mapped definition class.
 
-At runtime `Usage.fillSlots` checks that the definition given in the model was mapped as `D`, and throws with the element name otherwise.
+While mapping, the parser also throws, with the element name, if the definition given in the model was not mapped as `D`.
 
-# Rules (Executor)
+# Rules
 
 Rules run in two stages inside `parse`:
 
@@ -173,7 +174,7 @@ To add to the predefined general rules, call `super.getGeneralRules(newUtil)` in
 
 # Custom mapper
 
-`Mapper` can be extended, for example to change `idCalculation` or `isOwnedBy`. A new mapper is created for every `parse` through the protected method `getMapper()`:
+`Mapper` can be extended, for example to change `idCalculation` or `isOwnedBy`. Return it from `getMapper()`:
 
 ```java
 public class MyConverterMain extends SysmlConverterMain {
@@ -186,9 +187,9 @@ public class MyConverterMain extends SysmlConverterMain {
 
 # Logging
 
-Here are the three Log4j2 configurations. Place your chosen configuration under `src/main/resources/log4j2.xml`.
+Place one of these Log4j2 configurations under `src/main/resources/log4j2.xml`.
 
-## 1. No Logs (OFF)
+## No logs
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
@@ -209,9 +210,7 @@ Here are the three Log4j2 configurations. Place your chosen configuration under 
 </Configuration>
 ```
 
----
-
-## 2. INFO (Mapper INFO, WARN, and ERROR)
+## INFO (Mapper INFO, WARN and ERROR)
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
@@ -232,9 +231,7 @@ Here are the three Log4j2 configurations. Place your chosen configuration under 
 </Configuration>
 ```
 
----
-
-## 3. INFO + DEBUG (Mapper DEBUG, INFO, WARN, and ERROR)
+## DEBUG (Mapper DEBUG, INFO, WARN and ERROR)
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
