@@ -25,7 +25,7 @@ jobs:
       - name: Set up Maven Settings for GitHub Packages
         run: |
           mkdir -p ~/.m2
-          echo '<settings><servers><server><id>github</id><username>${{ github.actor }}</username><password>${{ secrets.GITHUB_TOKEN }}</password></server></servers></settings>' > ~/.m2/settings.xml
+          echo '<settings><servers><server><id>cloud-dts</id><username>${{ github.actor }}</username><password>${{ secrets.GITHUB_TOKEN }}</password></server></servers></settings>' > ~/.m2/settings.xml
       - name: Test
         run: mvn clean test
         env:
