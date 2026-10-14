@@ -13,7 +13,7 @@ Add the repository and the dependency to your `pom.xml`:
 ```xml
 <repositories>
     <repository>
-        <id>github</id>
+        <id>cloud-dts</id>
         <url>https://maven.pkg.github.com/cloud-DTs/Sysmlv2ModelParser</url>
     </repository>
 </repositories>
